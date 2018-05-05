@@ -1,5 +1,6 @@
+<#compress>
 <#-- 
-Copyright (C) 2016-2018 Axel Faust / Markus Joos
+Copyright (C) 2016-2018 Axel Faust
 Copyright (C) 2016-2018 Order of the Bee
 
 This file is part of Community Support Tools
@@ -21,20 +22,5 @@ Linked to Alfresco
 Copyright (C) 2005-2018 Alfresco Software Limited.
  
   -->
-
-<#include "../admin-template.ftl" />
-
-<@page title=msg("scheduled-jobs.execute.title") dialog=true >
-
-    <div class="column-full">
-        <p class="intro">${msg("scheduled-jobs.execute.intro-text")?html}</p>
-        <#if success>
-            <p class="success">${msg("scheduled-jobs.execute.success", args.jobName)?html}</p>
-        <#else>
-            <p class="failure">${msg("scheduled-jobs.execute.error")?html}</p>
-        </#if>
-      
-        <@dialogbuttons />
-    </div>
-   
-</@page>
+{}
+</#compress>

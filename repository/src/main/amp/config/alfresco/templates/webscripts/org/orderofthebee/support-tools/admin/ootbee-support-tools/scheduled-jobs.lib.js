@@ -1,6 +1,6 @@
 /**
- * Copyright (C) 2016 Axel Faust / Markus Joos / Jens Goldhammer
- * Copyright (C) 2016 Order of the Bee
+ * Copyright (C) 2016-2018 Axel Faust / Markus Joos / Jens Goldhammer
+ * Copyright (C) 2016-2018 Order of the Bee
  *
  * This file is part of Community Support Tools
  *
@@ -19,19 +19,19 @@
  */
 /*
  * Linked to Alfresco
- * Copyright (C) 2005-2016 Alfresco Software Limited.
+ * Copyright (C) 2005-2018 Alfresco Software Limited.
  */
 
 /* exported buildScheduledJobsData */
 function buildScheduledJobsData()
 {
-    var ctxt, scheduler, jobsList, scheduledJobsData, scheduledJobsName, i, j, jobTriggerDetail, runningJobs, count, executingJobs, quartz, cronDefinition, parser, descriptor, cronExpressionDescription, cronExpression, execContext, jobName;
+    var ctxt, scheduler, jobsList, jobTriggers, scheduledJobsName, i, j, k, jobTriggerDetails, jobTriggerDetail, runningJobs, count, executingJobs, quartz, cronDefinition, parser, descriptor, cronExpressionDescription, cronExpression, triggerState, execContext, jobName;
 
     ctxt = Packages.org.springframework.web.context.ContextLoader.getCurrentWebApplicationContext();
     scheduler = ctxt.getBean('schedulerFactory', Packages.org.quartz.Scheduler);
 
     jobsList = scheduler.jobGroupNames;
-    scheduledJobsData = [];
+    jobTriggers = [];
     scheduledJobsName = [];
     runningJobs = [];
 
@@ -55,30 +55,39 @@ function buildScheduledJobsData()
 
         for (j = 0; j < jobName.length; j++)
         {
-            jobTriggerDetail = scheduler.getTriggersOfJob(jobName[j], jobsList[i]);
+            jobTriggerDetails = scheduler.getTriggersOfJob(jobName[j], jobsList[i]);
 
-            cronExpression = jobTriggerDetail[0].cronExpression;
-            if (cronExpression)
+            for (k = 0; k < jobTriggerDetails.length; k++)
             {
-                cronExpressionDescription = descriptor.describe(parser.parse(cronExpression));
+                jobTriggerDetail = jobTriggerDetails[k];
+                triggerState = scheduler.getTriggerState(jobTriggerDetail.name, jobTriggerDetail.group);
+                cronExpression = jobTriggerDetail.cronExpression;
+                cronExpressionDescription = null;
+                if (cronExpression)
+                {
+                    cronExpressionDescription = descriptor.describe(parser.parse(cronExpression));
+                }
+    
+                jobTriggers.push({
+                    triggerName : jobTriggerDetail.name,
+                    triggerGroup : jobTriggerDetail.group,
+                    triggerState : triggerState,
+                    jobName : jobTriggerDetail.jobName,
+                    jobGroup : jobTriggerDetail.jobGroup,
+                    // trigger may not be cron-based
+                    cronExpression : cronExpression || null,
+                    cronExpressionDescription : cronExpressionDescription || null,
+                    startTime : jobTriggerDetail.startTime,
+                    previousFireTime : jobTriggerDetail.previousFireTime,
+                    nextFireTime : jobTriggerDetail.nextFireTime,
+                    timeZone : (jobTriggerDetail.timeZone !== undefined && jobTriggerDetail.timeZone !== null) ? jobTriggerDetail.timeZone.getID() : null,
+                    running : (runningJobs.indexOf(jobTriggerDetail.jobName + "-" + jobTriggerDetail.jobGroup) !== -1)
+                });
             }
-
-            scheduledJobsData.push({
-                jobsName : jobName[j],
-                // trigger may not be cron-based
-                cronExpression : jobTriggerDetail[0].cronExpression || null,
-                cronExpressionDescription : cronExpressionDescription || null,
-                startTime : jobTriggerDetail[0].startTime,
-                previousFireTime : jobTriggerDetail[0].previousFireTime,
-                nextFireTime : jobTriggerDetail[0].nextFireTime,
-                timeZone : jobTriggerDetail[0].timeZone !== undefined ? jobTriggerDetail[0].timeZone.getID() : null,
-                jobGroup : jobsList[i],
-                running : (runningJobs.indexOf(jobName[j] + "-" + jobsList[i]) !== -1)
-            });
         }
     }
 
-    model.scheduledjobs = scheduledJobsData;
+    model.jobTriggers = jobTriggers;
     model.locale = Packages.org.springframework.extensions.surf.util.I18NUtil.getLocale().toString();
 }
 
@@ -110,11 +119,31 @@ function buildRunningJobsData()
 }
 
 /* exported executeJobNow */
-function executeJobNow(jobName, groupName)
+function executeJobNow(jobName, jobGroup)
 {
     var ctxt, scheduler;
 
     ctxt = Packages.org.springframework.web.context.ContextLoader.getCurrentWebApplicationContext();
     scheduler = ctxt.getBean('schedulerFactory', Packages.org.quartz.Scheduler);
-    scheduler.triggerJob(jobName, groupName);
+    scheduler.triggerJob(jobName, jobGroup);
+}
+
+/* exported pauseTrigger */
+function pauseTrigger(triggerName, triggerGroup)
+{
+    var ctxt, scheduler;
+
+    ctxt = Packages.org.springframework.web.context.ContextLoader.getCurrentWebApplicationContext();
+    scheduler = ctxt.getBean('schedulerFactory', Packages.org.quartz.Scheduler);
+    scheduler.pauseTrigger(triggerName, triggerGroup);
+}
+
+/* exported resumeTrigger */
+function resumeTrigger(triggerName, triggerGroup)
+{
+    var ctxt, scheduler;
+
+    ctxt = Packages.org.springframework.web.context.ContextLoader.getCurrentWebApplicationContext();
+    scheduler = ctxt.getBean('schedulerFactory', Packages.org.quartz.Scheduler);
+    scheduler.resumeTrigger(triggerName, triggerGroup);
 }
